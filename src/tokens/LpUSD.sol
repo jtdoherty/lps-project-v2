@@ -12,15 +12,19 @@ contract LpUSD is ERC20, AccessControl {
         _grantRole(MINTER_ROLE, admin);
     }
 
-    // --- THIS IS THE FIX ---
-    // We override the default decimals function to match USDC's 6 decimals.
     function decimals() public view virtual override returns (uint8) {
         return 6;
     }
 
-    /// @notice Creates new lpUSD tokens.
-    /// @dev Can only be called by an address with MINTER_ROLE.
     function mint(address to, uint256 amount) public onlyRole(MINTER_ROLE) {
         _mint(to, amount);
+    }
+
+    // --- THIS IS THE FINAL, CORRECT IMPLEMENTATION ---
+    // This allows a spender (like our DepositController) to burn tokens
+    // from an owner's account, provided the owner has approved it.
+    function burnFrom(address from, uint256 amount) public {
+        _spendAllowance(from, msg.sender, amount);
+        _burn(from, amount);
     }
 }

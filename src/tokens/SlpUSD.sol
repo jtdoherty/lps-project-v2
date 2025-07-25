@@ -16,9 +16,9 @@ contract SlpUSD is ERC20, AccessControl {
         _mint(to, amount);
     }
 
-    // --- THIS IS THE FIX ---
-    // Allows an approved role (the StakingPool) to burn tokens from a user's balance.
-    function burnFrom(address from, uint256 amount) public onlyRole(MINTER_ROLE) {
+    // --- THIS IS THE FINAL, CORRECT IMPLEMENTATION ---
+    function burnFrom(address from, uint256 amount) public {
+        _spendAllowance(from, msg.sender, amount);
         _burn(from, amount);
     }
 }
