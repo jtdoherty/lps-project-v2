@@ -6,41 +6,46 @@ import "../src/DepositController.sol";
 import "../src/StakingPool.sol";
 import "../src/tokens/LpUSD.sol";
 import "../src/tokens/SlpUSD.sol";
+import "../src/mocks/MockYVault.sol";
 
 contract DeployAll is Script {
-    address testnetDai;
-    address testnetYvDai;
+    // --- THIS IS THE FIX ---
+    // Using the correctly checksummed address for Sepolia USDC.
+    address testnetUsdc = 0x1c7D4B196Cb0C7B01d743Fbc6116a902379C7238;
+    
+    address mockYvUsdc;
 
-    function run() external returns (address, address, address, address) {
-        testnetDai = 0x68194A729c245035126024572c9290Cdc608A65a;
-        testnetYvDai = 0x182431422FEA192383707844531317d1214227D8;
-
+    function run() external returns (address, address, address, address, address) {
         uint256 deployerPrivateKey = vm.envUint("PRIVATE_KEY");
         address deployer = vm.addr(deployerPrivateKey);
         
         vm.startBroadcast(deployerPrivateKey);
 
+        // 1. Deploy our Mock Vault first, telling it where the testnet USDC token is.
+        MockYVault mockVault = new MockYVault(testnetUsdc);
+        mockYvUsdc = address(mockVault);
+
+        // 2. Deploy the tokens
         LpUSD lpUsdToken = new LpUSD(deployer);
         SlpUSD slpUsdToken = new SlpUSD(deployer);
 
+        // 3. Deploy the main contracts
         DepositController controller = new DepositController(
-            testnetYvDai,
+            mockYvUsdc,
             address(lpUsdToken),
-            testnetDai,
-            deployer // The 4th argument
+            testnetUsdc,
+            deployer // Owner
         );
         StakingPool stakingPool = new StakingPool(
             address(lpUsdToken),
             address(slpUsdToken),
-            deployer
+            deployer // Owner
         );
 
-        // After deploying, we must link the controller to the staking pool
+        // 4. Wire everything together
         controller.setStakingPool(address(stakingPool));
-
         lpUsdToken.grantRole(lpUsdToken.MINTER_ROLE(), address(controller));
         slpUsdToken.grantRole(slpUsdToken.MINTER_ROLE(), address(stakingPool));
-
         lpUsdToken.renounceRole(lpUsdToken.MINTER_ROLE(), deployer);
         slpUsdToken.renounceRole(slpUsdToken.MINTER_ROLE(), deployer);
 
@@ -50,7 +55,8 @@ contract DeployAll is Script {
             address(lpUsdToken),
             address(slpUsdToken),
             address(controller),
-            address(stakingPool)
+            address(stakingPool),
+            mockYvUsdc
         );
     }
 }
