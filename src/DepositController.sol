@@ -1,84 +1,77 @@
+// In src/DepositController.sol
+// FULL AND CORRECTED FILE
+
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.20;
 
 import "openzeppelin-contracts/contracts/token/ERC20/utils/SafeERC20.sol";
-import "openzeppelin-contracts/contracts/utils/ReentrancyGuard.sol";
 import "openzeppelin-contracts/contracts/access/Ownable.sol";
 import "./interfaces/IYearnVault.sol";
 import "./interfaces/IERC20withDecimals.sol";
 import "./tokens/LpUSD.sol";
+import "./StakingPool.sol";
 
-contract DepositController is ReentrancyGuard, Ownable {
-    using SafeERC20 for IERC20;
+contract DepositController is Ownable {
+    using SafeERC20 for IERC20withDecimals;
+    using SafeERC20 for LpUSD;
 
-    IYearnVault public immutable yVault;
-    IERC20 public immutable underlyingAsset;
+    IYearnVault public immutable yvTokenVault;
     LpUSD public immutable lpUSD;
-    address public stakingPool;
+    IERC20withDecimals public immutable underlying;
+    StakingPool public stakingPool;
 
-    event Deposited(address indexed user, uint256 assetAmount, uint256 lpUsdMinted);
-    event Redeemed(address indexed user, uint256 lpUsdBurned, uint256 assetAmount);
-    event Harvested(uint256 yieldAmount, uint256 lpUsdCreated);
-    event StakingPoolSet(address indexed newStakingPool);
+    event StakingPoolSet(address newStakingPool);
 
     constructor(
-        address _yVaultAddress,
+        address _yvTokenAddress,
         address _lpUsdAddress,
-        address _underlyingAssetAddress,
+        address _underlyingAddress,
         address _initialOwner
     ) Ownable(_initialOwner) {
-        yVault = IYearnVault(_yVaultAddress);
-        underlyingAsset = IERC20(_underlyingAssetAddress);
+        yvTokenVault = IYearnVault(_yvTokenAddress);
         lpUSD = LpUSD(_lpUsdAddress);
+        underlying = IERC20withDecimals(_underlyingAddress);
     }
 
-    function setStakingPool(address _stakingPool) external onlyOwner {
-        stakingPool = _stakingPool;
-        emit StakingPoolSet(_stakingPool);
+    function setStakingPool(address _stakingPoolAddress) external onlyOwner {
+        stakingPool = StakingPool(_stakingPoolAddress);
+        emit StakingPoolSet(_stakingPoolAddress);
     }
 
-    function deposit(uint256 _amount) external nonReentrant {
-        require(_amount > 0, "Deposit amount must be positive");
-        underlyingAsset.safeTransferFrom(msg.sender, address(this), _amount);
-        _mintLpUSD(_amount, msg.sender);
+    function deposit(uint256 _amount) external {
+        underlying.safeTransferFrom(msg.sender, address(this), _amount);
+        // FIX: Using standard 'approve' which is correct here
+        underlying.approve(address(yvTokenVault), _amount);
+        yvTokenVault.deposit(_amount);
+        lpUSD.mint(msg.sender, _amount);
     }
 
-    function redeem(uint256 _lpUsdAmount) external nonReentrant {
-        require(_lpUsdAmount > 0, "Redeem amount must be positive");
+    function redeem(uint256 _lpUsdAmount) external {
+        // This now requires the MINTER_ROLE on LpUSD to call burnFrom
         lpUSD.burnFrom(msg.sender, _lpUsdAmount);
-        uint256 underlyingDecimals = IERC20withDecimals(address(underlyingAsset)).decimals();
-        uint256 underlyingToWithdraw = (_lpUsdAmount * (10**underlyingDecimals)) / (10**lpUSD.decimals());
-        uint256 assetsReceived = yVault.withdraw(underlyingToWithdraw, msg.sender);
-        emit Redeemed(msg.sender, _lpUsdAmount, assetsReceived);
+
+        uint256 pricePerShare = yvTokenVault.pricePerShare();
+        uint256 sharesToWithdraw = (_lpUsdAmount * 1e18) / pricePerShare;
+        
+        uint256 underlyingReceived = yvTokenVault.withdraw(sharesToWithdraw);
+
+        underlying.safeTransfer(msg.sender, underlyingReceived);
     }
 
-    function harvest() external returns (uint256) {
-        require(stakingPool != address(0), "Staking pool not set");
-        uint256 totalShares = IERC20(address(yVault)).balanceOf(address(this));
-        uint256 totalValue = yVault.previewRedeem(totalShares);
-        uint256 underlyingDecimals = IERC20withDecimals(address(underlyingAsset)).decimals();
-        uint256 liabilities = (lpUSD.totalSupply() * (10**underlyingDecimals)) / (10**lpUSD.decimals());
-
-        if (totalValue <= liabilities) return 0;
-        uint256 yield = totalValue - liabilities;
-
-        yVault.withdraw(yield, address(this));
-        _mintLpUSD(yield, stakingPool);
+    function harvest() external {
+        // FIX: Renamed 'before' and 'after' to avoid reserved keyword
+        uint256 sharesBefore = yvTokenVault.balanceOf(address(this));
+        yvTokenVault.harvest();
+        uint256 sharesAfter = yvTokenVault.balanceOf(address(this));
         
-        uint256 lpUsdMinted = (yield * (10**lpUSD.decimals())) / (10**underlyingDecimals);
-        emit Harvested(yield, lpUsdMinted);
-        return yield;
-    }
-
-    function _mintLpUSD(uint256 _underlyingAmount, address _recipient) internal {
-        underlyingAsset.approve(address(yVault), _underlyingAmount);
-        uint256 sharesReceived = yVault.deposit();
-        require(sharesReceived > 0, "Yearn deposit failed");
-
-        uint256 underlyingDecimals = IERC20withDecimals(address(underlyingAsset)).decimals();
-        uint256 amountToMint = (_underlyingAmount * (10**lpUSD.decimals())) / (10**underlyingDecimals);
-        
-        lpUSD.mint(_recipient, amountToMint);
-        emit Deposited(_recipient, _underlyingAmount, amountToMint);
+        if (sharesAfter > sharesBefore) {
+            uint256 gainedShares = sharesAfter - sharesBefore;
+            uint256 price = yvTokenVault.pricePerShare();
+            uint256 valueGained = (gainedShares * price) / 1e18;
+            
+            // This now requires the MINTER_ROLE on LpUSD to mint to the staking pool
+            lpUSD.mint(address(stakingPool), valueGained);
+            stakingPool.harvest(valueGained);
+        }
     }
 }

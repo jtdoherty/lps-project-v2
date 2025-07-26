@@ -1,5 +1,5 @@
 // In src/StakingPool.sol
-// FULL AND COMPLETE FILE
+// FULL AND CORRECTED FILE
 
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.20;
@@ -31,17 +31,15 @@ contract StakingPool is Ownable {
 
     function stake(uint256 _amount) external {
         require(_amount > 0, "Cannot stake 0");
-
         uint256 pool = totalLpUSD();
         uint256 supply = slpUSD.totalSupply();
         uint256 shares;
 
-        if (supply == 0) {
+        if (supply == 0 || pool == 0) {
             shares = _amount;
         } else {
             shares = (_amount * supply) / pool;
         }
-
         require(shares > 0, "Insufficient shares");
         
         lpUSD.safeTransferFrom(msg.sender, address(this), _amount);
@@ -52,16 +50,12 @@ contract StakingPool is Ownable {
 
     function unstake(uint256 _shares) external {
         require(_shares > 0, "Cannot unstake 0");
-        
         uint256 pool = totalLpUSD();
         uint256 supply = slpUSD.totalSupply();
-        
         uint256 amount = (_shares * pool) / supply;
         require(amount > 0, "Insufficient amount");
         
-        // Correct, standard, allowance-based burn pattern.
         slpUSD.burnFrom(msg.sender, _shares);
-
         lpUSD.safeTransfer(msg.sender, amount);
 
         emit Unstaked(msg.sender, _shares, amount);

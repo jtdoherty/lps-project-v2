@@ -1,60 +1,57 @@
+// In src/mocks/MockYVault.sol
+// FULL AND FINAL CORRECTED FILE
+
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.20;
 
+import "../interfaces/IYearnVault.sol";
 import "../interfaces/IERC20withDecimals.sol";
 import "openzeppelin-contracts/contracts/token/ERC20/ERC20.sol";
 import "openzeppelin-contracts/contracts/token/ERC20/utils/SafeERC20.sol";
+import "openzeppelin-contracts/contracts/access/Ownable.sol";
 
-// This is an upgraded mock of a Yearn Vault for testing yield generation.
-contract MockYVault is ERC20 {
+contract MockYVault is IYearnVault, ERC20, Ownable {
     using SafeERC20 for IERC20withDecimals;
 
-    IERC20withDecimals public immutable asset;
-    uint256 private _pricePerShare;
+    IERC20withDecimals public immutable underlying;
+    uint256 public pricePerShare;
 
-    constructor(address _asset) ERC20("Mock yvToken", "myvTKN") {
-        asset = IERC20withDecimals(_asset);
-        // Start with a price of 1.0 (with 18 decimals of precision)
-        _pricePerShare = 1e18;
-    }
-
-    /// @notice The price of one share in terms of the underlying asset.
-    function pricePerShare() external view returns (uint256) {
-        return _pricePerShare;
+    constructor(address _underlying) ERC20("Mock Yearn Vault Token", "myvTKN") Ownable(msg.sender) {
+        underlying = IERC20withDecimals(_underlying);
+        pricePerShare = 1e18; // Start with a 1:1 price
     }
     
-    /// @notice Manually set the price per share to simulate yield. (For testing only!)
-    function setPricePerShare(uint256 newPrice) external {
-        _pricePerShare = newPrice;
+    // --- THE FIX IS HERE ---
+    // This resolves the compiler error. Because both ERC20 and IYearnVault have a
+    // 'balanceOf' function, we must explicitly override it. We are choosing to use
+    // the standard behavior from the ERC20 contract.
+    function balanceOf(address account) public view override(IYearnVault, ERC20) returns (uint256) {
+        return super.balanceOf(account);
     }
 
-    function deposit(uint256 amount, address receiver) public returns (uint256) {
-        asset.safeTransferFrom(msg.sender, address(this), amount);
-        // Calculate shares to mint based on the current price
-        uint256 shares = (amount * 1e18) / _pricePerShare;
-        _mint(receiver, shares);
+    // Function for owner to add "yield" to the vault
+    function drip(uint256 amount) external {
+        underlying.safeTransferFrom(msg.sender, address(this), amount);
+    }
+    
+    function deposit(uint256 _amount) external override returns (uint256) {
+        underlying.safeTransferFrom(msg.sender, address(this), _amount);
+        uint256 shares = (_amount * 1e18) / pricePerShare;
+        _mint(msg.sender, shares);
         return shares;
     }
 
-    function deposit() external returns (uint256) {
-        uint256 amount = asset.allowance(msg.sender, address(this));
-        return deposit(amount, msg.sender);
-    }
-    
-    function withdraw(uint256 assets, address receiver) external returns (uint256) {
-        // Calculate shares to burn based on the current price
-        uint256 shares = (assets * 1e18) / _pricePerShare;
-        _burn(msg.sender, shares);
-        asset.safeTransfer(receiver, assets);
-        return assets;
+    function withdraw(uint256 _shares) external override returns (uint256) {
+        uint256 totalAssets = (_shares * pricePerShare) / 1e18;
+        _burn(msg.sender, _shares);
+        underlying.safeTransfer(msg.sender, totalAssets);
+        return totalAssets;
     }
 
-    function totalAssets() external view returns (uint256) {
-        // Total assets = total shares * price / 1e18
-        return (totalSupply() * _pricePerShare) / 1e18;
+    function setPricePerShare(uint256 newPrice) external onlyOwner {
+        pricePerShare = newPrice;
     }
 
-    function previewRedeem(uint256 shares) external view returns (uint256) {
-        return (shares * _pricePerShare) / 1e18;
-    }
+    // This is just a placeholder to satisfy the interface
+    function harvest() external override {}
 }
