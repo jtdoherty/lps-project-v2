@@ -1,5 +1,5 @@
 // In src/DepositController.sol
-// FULL AND CORRECTED FILE
+// FULL, FINAL, AND ARCHITECTURALLY-SOUND FILE
 
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.20;
@@ -9,7 +9,6 @@ import "openzeppelin-contracts/contracts/access/Ownable.sol";
 import "./interfaces/IYearnVault.sol";
 import "./interfaces/IERC20withDecimals.sol";
 import "./tokens/LpUSD.sol";
-import "./StakingPool.sol";
 
 contract DepositController is Ownable {
     using SafeERC20 for IERC20withDecimals;
@@ -18,9 +17,10 @@ contract DepositController is Ownable {
     IYearnVault public immutable yvTokenVault;
     LpUSD public immutable lpUSD;
     IERC20withDecimals public immutable underlying;
-    StakingPool public stakingPool;
+    address public stakingPool;
 
     event StakingPoolSet(address newStakingPool);
+    event Harvested(uint256 yield);
 
     constructor(
         address _yvTokenAddress,
@@ -34,44 +34,47 @@ contract DepositController is Ownable {
     }
 
     function setStakingPool(address _stakingPoolAddress) external onlyOwner {
-        stakingPool = StakingPool(_stakingPoolAddress);
+        stakingPool = _stakingPoolAddress;
         emit StakingPoolSet(_stakingPoolAddress);
     }
 
     function deposit(uint256 _amount) external {
         underlying.safeTransferFrom(msg.sender, address(this), _amount);
-        // FIX: Using standard 'approve' which is correct here
         underlying.approve(address(yvTokenVault), _amount);
         yvTokenVault.deposit(_amount);
         lpUSD.mint(msg.sender, _amount);
     }
 
     function redeem(uint256 _lpUsdAmount) external {
-        // This now requires the MINTER_ROLE on LpUSD to call burnFrom
         lpUSD.burnFrom(msg.sender, _lpUsdAmount);
-
         uint256 pricePerShare = yvTokenVault.pricePerShare();
         uint256 sharesToWithdraw = (_lpUsdAmount * 1e18) / pricePerShare;
-        
         uint256 underlyingReceived = yvTokenVault.withdraw(sharesToWithdraw);
-
         underlying.safeTransfer(msg.sender, underlyingReceived);
     }
 
+    // --- THE FINAL, CORRECT HARVEST LOGIC ---
     function harvest() external {
-        // FIX: Renamed 'before' and 'after' to avoid reserved keyword
-        uint256 sharesBefore = yvTokenVault.balanceOf(address(this));
-        yvTokenVault.harvest();
-        uint256 sharesAfter = yvTokenVault.balanceOf(address(this));
+        // Step 1: Find out how many Yearn Vault shares this contract owns.
+        uint256 sharesHeld = yvTokenVault.balanceOf(address(this));
         
-        if (sharesAfter > sharesBefore) {
-            uint256 gainedShares = sharesAfter - sharesBefore;
-            uint256 price = yvTokenVault.pricePerShare();
-            uint256 valueGained = (gainedShares * price) / 1e18;
+        // Step 2: Get the current value of one share.
+        uint256 price = yvTokenVault.pricePerShare();
+        
+        // Step 3: Calculate the total real value of our assets in the vault.
+        uint256 totalValue = (sharesHeld * price) / 1e18;
+        
+        // Step 4: Get the total amount of lpUSD we've already issued.
+        uint256 totalLpSupply = lpUSD.totalSupply();
+        
+        // Step 5: If our assets are worth more than our liabilities, the difference is profit.
+        if (totalValue > totalLpSupply) {
+            uint256 yield = totalValue - totalLpSupply;
             
-            // This now requires the MINTER_ROLE on LpUSD to mint to the staking pool
-            lpUSD.mint(address(stakingPool), valueGained);
-            stakingPool.harvest(valueGained);
+            // Step 6: Mint new lpUSD for the profit and send it to the StakingPool.
+            // THIS is the bridge that delivers the value to stakers.
+            lpUSD.mint(stakingPool, yield);
+            emit Harvested(yield);
         }
     }
 }

@@ -1,5 +1,5 @@
 // In src/StakingPool.sol
-// FULL AND CORRECTED FILE
+// FULL AND FINAL ARCHITECTURALLY-SOUND FILE
 
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.20;
@@ -18,20 +18,24 @@ contract StakingPool is Ownable {
 
     event Staked(address indexed user, uint256 lpUsdAmount, uint256 slpUsdAmount);
     event Unstaked(address indexed user, uint256 slpUsdAmount, uint256 lpUsdAmount);
-    event Harvested(address indexed harvester, uint256 lpUsdAmount);
 
-    constructor(address _lpUsdAddress, address _slpUsdAddress, address _initialOwner) Ownable(_initialOwner) {
+    // Constructor is now simpler again.
+    constructor(
+        address _lpUsdAddress, 
+        address _slpUsdAddress, 
+        address _initialOwner
+    ) Ownable(_initialOwner) {
         lpUSD = LpUSD(_lpUsdAddress);
         slpUSD = SlpUSD(_slpUsdAddress);
     }
 
-    function totalLpUSD() public view returns (uint256) {
-        return lpUSD.balanceOf(address(this));
-    }
-
     function stake(uint256 _amount) external {
         require(_amount > 0, "Cannot stake 0");
-        uint256 pool = totalLpUSD();
+        
+        // --- THE FINAL FIX IS HERE ---
+        // The pool's value is now its own balance, because the harvest() function
+        // tops it up with yield. This makes the logic much simpler and safer.
+        uint256 pool = lpUSD.balanceOf(address(this));
         uint256 supply = slpUSD.totalSupply();
         uint256 shares;
 
@@ -50,7 +54,8 @@ contract StakingPool is Ownable {
 
     function unstake(uint256 _shares) external {
         require(_shares > 0, "Cannot unstake 0");
-        uint256 pool = totalLpUSD();
+        
+        uint256 pool = lpUSD.balanceOf(address(this));
         uint256 supply = slpUSD.totalSupply();
         uint256 amount = (_shares * pool) / supply;
         require(amount > 0, "Insufficient amount");
@@ -59,10 +64,5 @@ contract StakingPool is Ownable {
         lpUSD.safeTransfer(msg.sender, amount);
 
         emit Unstaked(msg.sender, _shares, amount);
-    }
-    
-    function harvest(uint256 _amount) external onlyOwner {
-        lpUSD.safeTransferFrom(msg.sender, address(this), _amount);
-        emit Harvested(msg.sender, _amount);
     }
 }

@@ -1,3 +1,6 @@
+// In script/DeployAll.s.sol
+// FULL AND FINAL CORRECTED FILE
+
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.20;
 
@@ -9,54 +12,53 @@ import "../src/tokens/SlpUSD.sol";
 import "../src/mocks/MockYVault.sol";
 
 contract DeployAll is Script {
-    // --- THIS IS THE FIX ---
-    // Using the correctly checksummed address for Sepolia USDC.
-    address testnetUsdc = 0x1c7D4B196Cb0C7B01d743Fbc6116a902379C7238;
-    
-    address mockYvUsdc;
+    address constant usdcAddress = 0x1c7D4B196Cb0C7B01d743Fbc6116a902379C7238;
 
-    function run() external returns (address, address, address, address, address) {
+    function run()
+        external
+        returns (
+            address lpUsd,
+            address slpUsd,
+            address depositController,
+            address stakingPool,
+            address mockYVault
+        )
+    {
         uint256 deployerPrivateKey = vm.envUint("PRIVATE_KEY");
-        address deployer = vm.addr(deployerPrivateKey);
-        
+        address deployerAddress = vm.addr(deployerPrivateKey);
+
         vm.startBroadcast(deployerPrivateKey);
 
-        // 1. Deploy our Mock Vault first, telling it where the testnet USDC token is.
-        MockYVault mockVault = new MockYVault(testnetUsdc);
-        mockYvUsdc = address(mockVault);
+        // 1. Deploy contracts
+        mockYVault = address(new MockYVault(usdcAddress));
+        lpUsd = address(new LpUSD(deployerAddress));
+        slpUsd = address(new SlpUSD(deployerAddress));
+        depositController = address(new DepositController(
+            mockYVault, lpUsd, usdcAddress, deployerAddress
+        ));
+        stakingPool = address(new StakingPool(
+            lpUsd, slpUsd, deployerAddress
+        ));
 
-        // 2. Deploy the tokens
-        LpUSD lpUsdToken = new LpUSD(deployer);
-        SlpUSD slpUsdToken = new SlpUSD(deployer);
+        // 2. Configure contracts
+        DepositController(depositController).setStakingPool(stakingPool);
 
-        // 3. Deploy the main contracts
-        DepositController controller = new DepositController(
-            mockYvUsdc,
-            address(lpUsdToken),
-            testnetUsdc,
-            deployer // Owner
-        );
-        StakingPool stakingPool = new StakingPool(
-            address(lpUsdToken),
-            address(slpUsdToken),
-            deployer // Owner
-        );
+        // --- THE FIX IS HERE ---
+        // We now correctly cast the address variables to their contract types
+        // before calling their functions.
+        bytes32 minterRole = LpUSD(lpUsd).MINTER_ROLE();
+        LpUSD(lpUsd).grantRole(minterRole, depositController);
 
-        // 4. Wire everything together
-        controller.setStakingPool(address(stakingPool));
-        lpUsdToken.grantRole(lpUsdToken.MINTER_ROLE(), address(controller));
-        slpUsdToken.grantRole(slpUsdToken.MINTER_ROLE(), address(stakingPool));
-        lpUsdToken.renounceRole(lpUsdToken.MINTER_ROLE(), deployer);
-        slpUsdToken.renounceRole(slpUsdToken.MINTER_ROLE(), deployer);
+        minterRole = SlpUSD(slpUsd).MINTER_ROLE();
+        SlpUSD(slpUsd).grantRole(minterRole, stakingPool);
+
+        // 4. Renounce deployer's minting rights
+        minterRole = LpUSD(lpUsd).MINTER_ROLE();
+        LpUSD(lpUsd).renounceRole(minterRole, deployerAddress);
+
+        minterRole = SlpUSD(slpUsd).MINTER_ROLE();
+        SlpUSD(slpUsd).renounceRole(minterRole, deployerAddress);
 
         vm.stopBroadcast();
-        
-        return (
-            address(lpUsdToken),
-            address(slpUsdToken),
-            address(controller),
-            address(stakingPool),
-            mockYvUsdc
-        );
     }
 }
