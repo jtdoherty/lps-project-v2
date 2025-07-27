@@ -1,57 +1,81 @@
-// In src/mocks/MockYVault.sol
-// FULL AND FINAL CORRECTED FILE
-
 // SPDX-License-Identifier: MIT
-pragma solidity ^0.8.20;
+pragma solidity 0.8.30;
 
-import "../interfaces/IYearnVault.sol";
-import "../interfaces/IERC20withDecimals.sol";
-import "openzeppelin-contracts/contracts/token/ERC20/ERC20.sol";
-import "openzeppelin-contracts/contracts/token/ERC20/utils/SafeERC20.sol";
-import "openzeppelin-contracts/contracts/access/Ownable.sol";
+import {IYearnVault} from "../interfaces/IYearnVault.sol";
+import "openzeppelin-contracts/token/ERC20/ERC20.sol";
+import "openzeppelin-contracts/token/ERC20/utils/SafeERC20.sol";
+import "openzeppelin-contracts/access/Ownable.sol";
 
 contract MockYVault is IYearnVault, ERC20, Ownable {
-    using SafeERC20 for IERC20withDecimals;
+    using SafeERC20 for IERC20;
 
-    IERC20withDecimals public immutable underlying;
-    uint256 public pricePerShare;
+    IERC20 public immutable underlying;
+    uint256 public pricePerShare = 10**18;
 
-    constructor(address _underlying) ERC20("Mock Yearn Vault Token", "myvTKN") Ownable(msg.sender) {
-        underlying = IERC20withDecimals(_underlying);
-        pricePerShare = 1e18; // Start with a 1:1 price
-    }
-    
-    // --- THE FIX IS HERE ---
-    // This resolves the compiler error. Because both ERC20 and IYearnVault have a
-    // 'balanceOf' function, we must explicitly override it. We are choosing to use
-    // the standard behavior from the ERC20 contract.
-    function balanceOf(address account) public view override(IYearnVault, ERC20) returns (uint256) {
-        return super.balanceOf(account);
+    constructor(
+        address _underlying,
+        address _initialOwner
+    ) ERC20("Mock Yearn Vault", "myvTKN") Ownable(_initialOwner) {
+        underlying = IERC20(_underlying);
     }
 
-    // Function for owner to add "yield" to the vault
-    function drip(uint256 amount) external {
-        underlying.safeTransferFrom(msg.sender, address(this), amount);
+    // --- Admin Functions ---
+
+    function setPricePerShare(uint256 _price) external onlyOwner {
+        pricePerShare = _price;
     }
-    
-    function deposit(uint256 _amount) external override returns (uint256) {
+
+    function drip(uint256 _amount) external {
         underlying.safeTransferFrom(msg.sender, address(this), _amount);
-        uint256 shares = (_amount * 1e18) / pricePerShare;
-        _mint(msg.sender, shares);
-        return shares;
     }
 
-    function withdraw(uint256 _shares) external override returns (uint256) {
-        uint256 totalAssets = (_shares * pricePerShare) / 1e18;
+    // --- IYearnVault Interface Implementation ---
+
+    function deposit(
+        uint256 _amount,
+        address _receiver
+    ) public override returns (uint256 shares) {
+        uint256 totalAssets = underlying.balanceOf(address(this));
+        uint256 currentSupply = totalSupply();
+        if (currentSupply == 0 || totalAssets == 0) {
+            shares = _amount;
+        } else {
+            shares = (_amount * currentSupply) / totalAssets;
+        }
+        _mint(_receiver, shares);
+        underlying.safeTransferFrom(msg.sender, address(this), _amount);
+    }
+
+    function withdraw(
+        uint256 _shares,
+        address _receiver,
+        address, // _owner is unused in mock
+        uint256 // _slippage is unused in mock
+    ) public override returns (uint256 assets) {
+        uint256 totalAssets = underlying.balanceOf(address(this));
+        uint256 currentSupply = totalSupply();
+        assets = (_shares * totalAssets) / currentSupply;
         _burn(msg.sender, _shares);
-        underlying.safeTransfer(msg.sender, totalAssets);
-        return totalAssets;
+        underlying.safeTransfer(_receiver, assets);
     }
 
-    function setPricePerShare(uint256 newPrice) external onlyOwner {
-        pricePerShare = newPrice;
+    function previewRedeem(
+        uint256 _shares
+    ) public view override returns (uint256) {
+        return (_shares * pricePerShare) / 10**18;
     }
 
-    // This is just a placeholder to satisfy the interface
-    function harvest() external override {}
+    function token() external view override returns (address) {
+        return address(underlying);
+    }
+    
+    // Explicitly override to resolve inheritance conflict
+    function balanceOf(address _account) public view override(IYearnVault, ERC20) returns (uint256) {
+        return super.balanceOf(_account);
+    }
+
+    // Dummy implementation to satisfy the interface
+    function harvest() external override {
+        // In a real vault, this triggers strategies. In our mock, it does nothing.
+    }
 }

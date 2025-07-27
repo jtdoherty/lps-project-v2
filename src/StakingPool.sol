@@ -1,68 +1,60 @@
-// In src/StakingPool.sol
-// FULL AND FINAL ARCHITECTURALLY-SOUND FILE
-
 // SPDX-License-Identifier: MIT
-pragma solidity ^0.8.20;
+pragma solidity 0.8.30;
 
-import "openzeppelin-contracts/contracts/token/ERC20/utils/SafeERC20.sol";
-import "openzeppelin-contracts/contracts/access/Ownable.sol";
-import "./tokens/LpUSD.sol";
-import "./tokens/SlpUSD.sol";
+import "openzeppelin-contracts/access/Ownable.sol";
+import "openzeppelin-contracts/utils/ReentrancyGuard.sol"; // <--- CORRECTED PATH
+import "openzeppelin-contracts/token/ERC20/IERC20.sol";
+import { LpUSD } from "./tokens/LpUSD.sol";
+import { SlpUSD } from "./tokens/SlpUSD.sol";
 
-contract StakingPool is Ownable {
-    using SafeERC20 for LpUSD;
-    using SafeERC20 for SlpUSD;
+// ... rest of the file is identical ...
+contract StakingPool is Ownable, ReentrancyGuard {
 
-    LpUSD public immutable lpUSD;
-    SlpUSD public immutable slpUSD;
+    LpUSD public lpUsd;
+    SlpUSD public slpUsd;
 
-    event Staked(address indexed user, uint256 lpUsdAmount, uint256 slpUsdAmount);
-    event Unstaked(address indexed user, uint256 slpUsdAmount, uint256 lpUsdAmount);
+    event Stake(address indexed user, uint256 amount);
+    event Unstake(address indexed user, uint256 amount);
 
-    // Constructor is now simpler again.
     constructor(
-        address _lpUsdAddress, 
-        address _slpUsdAddress, 
+        address _lpUsdAddress,
+        address _slpUsdAddress,
         address _initialOwner
     ) Ownable(_initialOwner) {
-        lpUSD = LpUSD(_lpUsdAddress);
-        slpUSD = SlpUSD(_slpUsdAddress);
+        lpUsd = LpUSD(_lpUsdAddress);
+        slpUsd = SlpUSD(_slpUsdAddress);
     }
 
-    function stake(uint256 _amount) external {
+    function stake(uint256 _amount) external nonReentrant {
         require(_amount > 0, "Cannot stake 0");
-        
-        // --- THE FINAL FIX IS HERE ---
-        // The pool's value is now its own balance, because the harvest() function
-        // tops it up with yield. This makes the logic much simpler and safer.
-        uint256 pool = lpUSD.balanceOf(address(this));
-        uint256 supply = slpUSD.totalSupply();
-        uint256 shares;
 
-        if (supply == 0 || pool == 0) {
-            shares = _amount;
+        uint256 totalLpUsdInPool = lpUsd.balanceOf(address(this));
+        uint256 totalSlpUsdSupply = slpUsd.totalSupply();
+
+        uint256 slpUsdToMint;
+        if (totalSlpUsdSupply == 0) {
+            slpUsdToMint = _amount;
         } else {
-            shares = (_amount * supply) / pool;
+            slpUsdToMint = (_amount * totalSlpUsdSupply) / totalLpUsdInPool;
         }
-        require(shares > 0, "Insufficient shares");
-        
-        lpUSD.safeTransferFrom(msg.sender, address(this), _amount);
-        slpUSD.mint(msg.sender, shares);
 
-        emit Staked(msg.sender, _amount, shares);
+        lpUsd.transferFrom(msg.sender, address(this), _amount);
+        slpUsd.mint(msg.sender, slpUsdToMint);
+
+        emit Stake(msg.sender, _amount);
     }
 
-    function unstake(uint256 _shares) external {
-        require(_shares > 0, "Cannot unstake 0");
-        
-        uint256 pool = lpUSD.balanceOf(address(this));
-        uint256 supply = slpUSD.totalSupply();
-        uint256 amount = (_shares * pool) / supply;
-        require(amount > 0, "Insufficient amount");
-        
-        slpUSD.burnFrom(msg.sender, _shares);
-        lpUSD.safeTransfer(msg.sender, amount);
+    function unstake(uint256 _slpUsdAmount) external nonReentrant {
+        require(_slpUsdAmount > 0, "Cannot unstake 0");
 
-        emit Unstaked(msg.sender, _shares, amount);
+        uint256 totalLpUsdInPool = lpUsd.balanceOf(address(this));
+        uint256 totalSlpUsdSupply = slpUsd.totalSupply();
+        
+        uint256 lpUsdToReturn = (_slpUsdAmount * totalLpUsdInPool) / totalSlpUsdSupply;
+
+        slpUsd.burnFrom(msg.sender, _slpUsdAmount);
+        lpUsd.transfer(msg.sender, lpUsdToReturn);
+
+        emit Unstake(msg.sender, _slpUsdAmount);
     }
 }

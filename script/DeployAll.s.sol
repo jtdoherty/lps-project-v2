@@ -1,63 +1,58 @@
-// In script/DeployAll.s.sol
-// FULL AND FINAL CORRECTED FILE
-
 // SPDX-License-Identifier: MIT
-pragma solidity ^0.8.20;
+pragma solidity 0.8.30;
 
-import "forge-std/Script.sol";
-import "../src/DepositController.sol";
-import "../src/StakingPool.sol";
-import "../src/tokens/LpUSD.sol";
-import "../src/tokens/SlpUSD.sol";
-import "../src/mocks/MockYVault.sol";
+import { Script } from "forge-std/Script.sol";
+import { console } from "forge-std/console.sol";
+import { LpUSD } from "../src/tokens/LpUSD.sol";
+import { SlpUSD } from "../src/tokens/SlpUSD.sol";
+import { DepositController } from "../src/DepositController.sol";
+import { StakingPool } from "../src/StakingPool.sol";
 
 contract DeployAll is Script {
-    address constant usdcAddress = 0x1c7D4B196Cb0C7B01d743Fbc6116a902379C7238;
+    address constant YVAULT_ADDRESS = 0xfBd4d8bf19c67582168059332c46567563d0d75f;
+    address constant USDC_ADDRESS = 0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48;
+    address constant CURVE_POOL_ADDRESS = 0x4f493B7dE8aAC7d55F71853688b1F7C8F0243C85;
+    uint8 constant USDC_INDEX = 0; // The index for USDC in this pool
 
-    function run()
-        external
-        returns (
-            address lpUsd,
-            address slpUsd,
-            address depositController,
-            address stakingPool,
-            address mockYVault
-        )
-    {
+    function run() external returns (
+        address lpUsd,
+        address slpUsd,
+        address depositController,
+        address stakingPool
+    ) {
         uint256 deployerPrivateKey = vm.envUint("PRIVATE_KEY");
         address deployerAddress = vm.addr(deployerPrivateKey);
 
         vm.startBroadcast(deployerPrivateKey);
 
-        // 1. Deploy contracts
-        mockYVault = address(new MockYVault(usdcAddress));
-        lpUsd = address(new LpUSD(deployerAddress));
-        slpUsd = address(new SlpUSD(deployerAddress));
-        depositController = address(new DepositController(
-            mockYVault, lpUsd, usdcAddress, deployerAddress
-        ));
-        stakingPool = address(new StakingPool(
-            lpUsd, slpUsd, deployerAddress
-        ));
+        LpUSD lpUsdContract = new LpUSD(deployerAddress);
+        SlpUSD slpUsdContract = new SlpUSD(deployerAddress);
+        lpUsd = address(lpUsdContract);
+        slpUsd = address(slpUsdContract);
+        
+        DepositController depositControllerContract = new DepositController(
+            YVAULT_ADDRESS,
+            lpUsd,
+            USDC_ADDRESS,
+            CURVE_POOL_ADDRESS,
+            USDC_INDEX, // Pass the correct index
+            deployerAddress
+        );
+        depositController = address(depositControllerContract);
 
-        // 2. Configure contracts
-        DepositController(depositController).setStakingPool(stakingPool);
+        StakingPool stakingPoolContract = new StakingPool(lpUsd, slpUsd, deployerAddress);
+        stakingPool = address(stakingPoolContract);
 
-        // --- THE FIX IS HERE ---
-        // We now correctly cast the address variables to their contract types
-        // before calling their functions.
-        bytes32 minterRole = LpUSD(lpUsd).MINTER_ROLE();
-        LpUSD(lpUsd).grantRole(minterRole, depositController);
+        depositControllerContract.setStakingPool(stakingPool);
+        
+        bytes32 minterRole = lpUsdContract.MINTER_ROLE();
+        lpUsdContract.grantRole(minterRole, depositController);
+        
+        minterRole = slpUsdContract.MINTER_ROLE();
+        slpUsdContract.grantRole(minterRole, stakingPool);
 
-        minterRole = SlpUSD(slpUsd).MINTER_ROLE();
-        SlpUSD(slpUsd).grantRole(minterRole, stakingPool);
-
-        // 4. Renounce deployer's minting rights
-        minterRole = LpUSD(lpUsd).MINTER_ROLE();
-        LpUSD(lpUsd).renounceRole(minterRole, deployerAddress);
-
-        minterRole = SlpUSD(slpUsd).MINTER_ROLE();
-        SlpUSD(slpUsd).renounceRole(minterRole, deployerAddress);
+        lpUsdContract.renounceRole(lpUsdContract.MINTER_ROLE(), deployerAddress);
+        slpUsdContract.renounceRole(slpUsdContract.MINTER_ROLE(), deployerAddress);
 
         vm.stopBroadcast();
     }
