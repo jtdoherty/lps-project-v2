@@ -1,0 +1,127 @@
+jtdoherty@LAPTOP-QLD0VTBG:~/projects/lps-project-v2$ source .env && forge script script/TestMainnet.s.sol:TestMainnet --fork-url $MAINNET_RPC_URL -vvvv
+[⠊] Compiling...
+[⠑] Compiling 3 files with Solc 0.8.30
+[⠘] Solc 0.8.30 finished in 597.42ms
+Compiler run successful with warnings:
+Warning (5667): Unused function parameter. Remove or comment out the variable name to silence this warning.
+  --> src/DepositController.sol:32:9:
+   |
+32 |         uint8 _underlyingIndex,
+   |         ^^^^^^^^^^^^^^^^^^^^^^
+
+Traces:
+  [8625629] → new TestMainnet@0x9f7cF1d1F558E57ef88a59ac3D47214eF25B6A06
+    └─ ← [Return] 42956 bytes of code
+
+  [13416685] TestMainnet::run()
+    ├─ [0] VM::envString("MAINNET_RPC_URL") [staticcall]
+    │   └─ ← [Return] <env var value>
+    ├─ [0] VM::createSelectFork("<rpc url>")
+    │   └─ ← [Return] 1
+    ├─ [7071495] → new DeployAll@0x5aAdFB43eF8dAF45DD80F4676345b7676f1D70e3
+    │   └─ ← [Return] 35200 bytes of code
+    ├─ [0] VM::envUint("PRIVATE_KEY") [staticcall]
+    │   └─ ← [Return] <env var value>
+    ├─ [0] VM::addr(<pk>) [staticcall]
+    │   └─ ← [Return] 0x3DdaA30E53093650d931e8A8B2e214B2cD45dB7D
+    ├─ [6058684] DeployAll::run()
+    │   ├─ [0] VM::envUint("PRIVATE_KEY") [staticcall]
+    │   │   └─ ← [Return] <env var value>
+    │   ├─ [0] VM::addr(<pk>) [staticcall]
+    │   │   └─ ← [Return] 0x3DdaA30E53093650d931e8A8B2e214B2cD45dB7D
+    │   ├─ [0] VM::startBroadcast(<pk>)
+    │   │   └─ ← [Return]
+    │   ├─ [1422089] → new LpUSD@0x9c650BDD31Caa1e250077dA7F847CcC5110fce1F
+    │   │   ├─ emit OwnershipTransferred(previousOwner: 0x0000000000000000000000000000000000000000, newOwner: 0x3DdaA30E53093650d931e8A8B2e214B2cD45dB7D)
+    │   │   ├─ emit RoleGranted(role: 0x0000000000000000000000000000000000000000000000000000000000000000, account: 0x3DdaA30E53093650d931e8A8B2e214B2cD45dB7D, sender: 0x3DdaA30E53093650d931e8A8B2e214B2cD45dB7D)
+    │   │   ├─ emit RoleGranted(role: 0x9f2df0fed2c77648de5860a4cc508cd0818c85b8b8a1ab4ceeef8d981c8956a6, account: 0x3DdaA30E53093650d931e8A8B2e214B2cD45dB7D, sender: 0x3DdaA30E53093650d931e8A8B2e214B2cD45dB7D)
+    │   │   └─ ← [Return] 6507 bytes of code
+    │   ├─ [1422089] → new SlpUSD@0x2A48904251cA0a49337dDfA057CA01dbFB49E2F2
+    │   │   ├─ emit OwnershipTransferred(previousOwner: 0x0000000000000000000000000000000000000000, newOwner: 0x3DdaA30E53093650d931e8A8B2e214B2cD45dB7D)
+    │   │   ├─ emit RoleGranted(role: 0x0000000000000000000000000000000000000000000000000000000000000000, account: 0x3DdaA30E53093650d931e8A8B2e214B2cD45dB7D, sender: 0x3DdaA30E53093650d931e8A8B2e214B2cD45dB7D)
+    │   │   ├─ emit RoleGranted(role: 0x9f2df0fed2c77648de5860a4cc508cd0818c85b8b8a1ab4ceeef8d981c8956a6, account: 0x3DdaA30E53093650d931e8A8B2e214B2cD45dB7D, sender: 0x3DdaA30E53093650d931e8A8B2e214B2cD45dB7D)
+    │   │   └─ ← [Return] 6507 bytes of code
+    │   ├─ [2129257] → new DepositController@0x2DD88B8544c61D002490a6315D7EC28DE072A78F
+    │   │   ├─ emit OwnershipTransferred(previousOwner: 0x0000000000000000000000000000000000000000, newOwner: 0x3DdaA30E53093650d931e8A8B2e214B2cD45dB7D)
+    │   │   ├─ [6244] Vyper_contract::token() [staticcall]
+    │   │   │   ├─ [3578] Vyper_contract::token() [delegatecall]
+    │   │   │   │   └─ ← [Return] CurveStableSwapNG: [0x4f493B7dE8aAC7d55F71853688b1F7C8F0243C85]
+    │   │   │   └─ ← [Return] CurveStableSwapNG: [0x4f493B7dE8aAC7d55F71853688b1F7C8F0243C85]
+    │   │   └─ ← [Return] 9687 bytes of code
+    │   ├─ [851362] → new StakingPool@0xC0702C3537D28aEAFBdDA94F708C4F893Fb8eE7C
+    │   │   ├─ emit OwnershipTransferred(previousOwner: 0x0000000000000000000000000000000000000000, newOwner: 0x3DdaA30E53093650d931e8A8B2e214B2cD45dB7D)
+    │   │   └─ ← [Return] 3797 bytes of code
+    │   ├─ [24295] DepositController::setStakingPool(StakingPool: [0xC0702C3537D28aEAFBdDA94F708C4F893Fb8eE7C])
+    │   │   ├─ emit StakingPoolSet(newStakingPool: StakingPool: [0xC0702C3537D28aEAFBdDA94F708C4F893Fb8eE7C])
+    │   │   └─ ← [Stop]
+    │   ├─ [391] LpUSD::MINTER_ROLE() [staticcall]
+    │   │   └─ ← [Return] 0x9f2df0fed2c77648de5860a4cc508cd0818c85b8b8a1ab4ceeef8d981c8956a6
+    │   ├─ [28079] LpUSD::grantRole(0x9f2df0fed2c77648de5860a4cc508cd0818c85b8b8a1ab4ceeef8d981c8956a6, DepositController: [0x2DD88B8544c61D002490a6315D7EC28DE072A78F])
+    │   │   ├─ emit RoleGranted(role: 0x9f2df0fed2c77648de5860a4cc508cd0818c85b8b8a1ab4ceeef8d981c8956a6, account: DepositController: [0x2DD88B8544c61D002490a6315D7EC28DE072A78F], sender: 0x3DdaA30E53093650d931e8A8B2e214B2cD45dB7D)
+    │   │   └─ ← [Stop]
+    │   ├─ [391] SlpUSD::MINTER_ROLE() [staticcall]
+    │   │   └─ ← [Return] 0x9f2df0fed2c77648de5860a4cc508cd0818c85b8b8a1ab4ceeef8d981c8956a6
+    │   ├─ [28079] SlpUSD::grantRole(0x9f2df0fed2c77648de5860a4cc508cd0818c85b8b8a1ab4ceeef8d981c8956a6, StakingPool: [0xC0702C3537D28aEAFBdDA94F708C4F893Fb8eE7C])
+    │   │   ├─ emit RoleGranted(role: 0x9f2df0fed2c77648de5860a4cc508cd0818c85b8b8a1ab4ceeef8d981c8956a6, account: StakingPool: [0xC0702C3537D28aEAFBdDA94F708C4F893Fb8eE7C], sender: 0x3DdaA30E53093650d931e8A8B2e214B2cD45dB7D)
+    │   │   └─ ← [Stop]
+    │   ├─ [391] LpUSD::MINTER_ROLE() [staticcall]
+    │   │   └─ ← [Return] 0x9f2df0fed2c77648de5860a4cc508cd0818c85b8b8a1ab4ceeef8d981c8956a6
+    │   ├─ [3600] LpUSD::renounceRole(0x9f2df0fed2c77648de5860a4cc508cd0818c85b8b8a1ab4ceeef8d981c8956a6, 0x3DdaA30E53093650d931e8A8B2e214B2cD45dB7D)
+    │   │   ├─ emit RoleRevoked(role: 0x9f2df0fed2c77648de5860a4cc508cd0818c85b8b8a1ab4ceeef8d981c8956a6, account: 0x3DdaA30E53093650d931e8A8B2e214B2cD45dB7D, sender: 0x3DdaA30E53093650d931e8A8B2e214B2cD45dB7D)
+    │   │   └─ ← [Stop]
+    │   ├─ [391] SlpUSD::MINTER_ROLE() [staticcall]
+    │   │   └─ ← [Return] 0x9f2df0fed2c77648de5860a4cc508cd0818c85b8b8a1ab4ceeef8d981c8956a6
+    │   ├─ [3600] SlpUSD::renounceRole(0x9f2df0fed2c77648de5860a4cc508cd0818c85b8b8a1ab4ceeef8d981c8956a6, 0x3DdaA30E53093650d931e8A8B2e214B2cD45dB7D)
+    │   │   ├─ emit RoleRevoked(role: 0x9f2df0fed2c77648de5860a4cc508cd0818c85b8b8a1ab4ceeef8d981c8956a6, account: 0x3DdaA30E53093650d931e8A8B2e214B2cD45dB7D, sender: 0x3DdaA30E53093650d931e8A8B2e214B2cD45dB7D)
+    │   │   └─ ← [Stop]
+    │   ├─ [0] VM::stopBroadcast()
+    │   │   └─ ← [Return]
+    │   └─ ← [Return] LpUSD: [0x9c650BDD31Caa1e250077dA7F847CcC5110fce1F], SlpUSD: [0x2A48904251cA0a49337dDfA057CA01dbFB49E2F2], DepositController: [0x2DD88B8544c61D002490a6315D7EC28DE072A78F], StakingPool: [0xC0702C3537D28aEAFBdDA94F708C4F893Fb8eE7C]
+    ├─ [0] VM::startPrank(0xF977814e90dA44bFA03b6295A0616a897441aceC)
+    │   └─ ← [Return]
+    ├─ [40652] FiatTokenProxy::fallback(0x3DdaA30E53093650d931e8A8B2e214B2cD45dB7D, 100000000000 [1e11])
+    │   ├─ [33363] FiatTokenV2_2::transfer(0x3DdaA30E53093650d931e8A8B2e214B2cD45dB7D, 100000000000 [1e11]) [delegatecall]
+    │   │   ├─ emit Transfer(from: 0xF977814e90dA44bFA03b6295A0616a897441aceC, to: 0x3DdaA30E53093650d931e8A8B2e214B2cD45dB7D, value: 100000000000 [1e11])
+    │   │   └─ ← [Return] true
+    │   └─ ← [Return] true
+    ├─ [0] VM::stopPrank()
+    │   └─ ← [Return]
+    ├─ [0] console::log("User's starting USDC balance: 100,000.00") [staticcall]
+    │   └─ ← [Stop]
+    ├─ [0] VM::startBroadcast(<pk>)
+    │   └─ ← [Return]
+    ├─ [0] console::log("--- Journey A: User Deposits 100,000 USDC ---") [staticcall]
+    │   └─ ← [Stop]
+    ├─ [25462] FiatTokenProxy::fallback(DepositController: [0x2DD88B8544c61D002490a6315D7EC28DE072A78F], 100000000000 [1e11])
+    │   ├─ [24673] FiatTokenV2_2::approve(DepositController: [0x2DD88B8544c61D002490a6315D7EC28DE072A78F], 100000000000 [1e11]) [delegatecall]
+    │   │   ├─ emit Approval(owner: 0x3DdaA30E53093650d931e8A8B2e214B2cD45dB7D, spender: DepositController: [0x2DD88B8544c61D002490a6315D7EC28DE072A78F], value: 100000000000 [1e11])
+    │   │   └─ ← [Return] true
+    │   └─ ← [Return] true
+    ├─ [68193] DepositController::deposit(100000000000 [1e11])
+    │   ├─ [28449] FiatTokenProxy::fallback(0x3DdaA30E53093650d931e8A8B2e214B2cD45dB7D, DepositController: [0x2DD88B8544c61D002490a6315D7EC28DE072A78F], 100000000000 [1e11])
+    │   │   ├─ [27654] FiatTokenV2_2::transferFrom(0x3DdaA30E53093650d931e8A8B2e214B2cD45dB7D, DepositController: [0x2DD88B8544c61D002490a6315D7EC28DE072A78F], 100000000000 [1e11]) [delegatecall]
+    │   │   │   ├─ emit Transfer(from: 0x3DdaA30E53093650d931e8A8B2e214B2cD45dB7D, to: DepositController: [0x2DD88B8544c61D002490a6315D7EC28DE072A78F], value: 100000000000 [1e11])
+    │   │   │   └─ ← [Return] true
+    │   │   └─ ← [Return] true
+    │   ├─ [5562] FiatTokenProxy::fallback(CurveStableSwapNG: [0x4f493B7dE8aAC7d55F71853688b1F7C8F0243C85], 0)
+    │   │   ├─ [4773] FiatTokenV2_2::approve(CurveStableSwapNG: [0x4f493B7dE8aAC7d55F71853688b1F7C8F0243C85], 0) [delegatecall]
+    │   │   │   ├─ emit Approval(owner: DepositController: [0x2DD88B8544c61D002490a6315D7EC28DE072A78F], spender: CurveStableSwapNG: [0x4f493B7dE8aAC7d55F71853688b1F7C8F0243C85], value: 0)
+    │   │   │   └─ ← [Return] true
+    │   │   └─ ← [Return] true
+    │   ├─ [23362] FiatTokenProxy::fallback(CurveStableSwapNG: [0x4f493B7dE8aAC7d55F71853688b1F7C8F0243C85], 100000000000000000000000 [1e23])
+    │   │   ├─ [22573] FiatTokenV2_2::approve(CurveStableSwapNG: [0x4f493B7dE8aAC7d55F71853688b1F7C8F0243C85], 100000000000000000000000 [1e23]) [delegatecall]
+    │   │   │   ├─ emit Approval(owner: DepositController: [0x2DD88B8544c61D002490a6315D7EC28DE072A78F], spender: CurveStableSwapNG: [0x4f493B7dE8aAC7d55F71853688b1F7C8F0243C85], value: 100000000000000000000000 [1e23])
+    │   │   │   └─ ← [Return] true
+    │   │   └─ ← [Return] true
+    │   ├─ [193] CurveStableSwapNG::add_liquidity([100000000000000000000000 [1e23], 0], 99900000000000000000000 [9.99e22])
+    │   │   └─ ← [Revert] EvmError: Revert
+    │   └─ ← [Revert] EvmError: Revert
+    └─ ← [Revert] EvmError: Revert
+
+
+
+== Logs ==
+  User's starting USDC balance: 100,000.00
+  --- Journey A: User Deposits 100,000 USDC ---
+Error: script failed: <empty revert data>
+jtdoherty@LAPTOP-QLD0VTBG:~/projects/lps-project-v2$
