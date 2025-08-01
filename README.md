@@ -1,8 +1,5 @@
 # Liquid LP Yield Protocol
 
-[![Discord](https://img.shields.io/discord/YOUR_DISCORD_ID?label=Discord&logo=discord)](https://discord.gg/YOUR_INVITE_LINK)
-[![Twitter](https://img.shields.io/twitter/follow/YOUR_TWITTER_HANDLE?style=social)](https://twitter.com/YOUR_TWITTER_HANDLE)
-
 The Liquid LP Yield Protocol introduces `lpUSD`, a decentralized stablecoin, and `wlpUSD` (wrapped lpUSD), its yield-bearing counterpart. The protocol is built on top of battle-tested DeFi primitives like Yearn Finance to provide a simple and secure way to earn yield on stablecoins.
 
 ## Vision & Core Principles
@@ -70,16 +67,16 @@ To see a test coverage report, run:
 
 ## Deployment
 
-To deploy the contracts, first create a .env file by copying the example:
+- To deploy the contracts, first create a .env file by copying the example:
     ```shell
     cp .env.example .env
     ```
-Then, populate your .env file with your SEPOLIA_RPC_URL and PRIVATE_KEY.
+- Then, populate your .env file with your SEPOLIA_RPC_URL and PRIVATE_KEY.
     ```shell
     SEPOLIA_RPC_URL=YOUR_RPC_URL
     PRIVATE_KEY=YOUR_WALLET_PRIVATE_KEY
     ```
-Finally, run the deployment script:
+- Finally, run the deployment script:
     ```shell
     forge script script/DeployAll.s.sol --rpc-url $SEPOLIA_RPC_URL --private-key $PRIVATE_KEY --broadcast --verify -vvvv
     ```
