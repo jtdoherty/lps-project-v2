@@ -2,12 +2,11 @@
 pragma solidity 0.8.30;
 
 import "openzeppelin-contracts/access/Ownable.sol";
-import "openzeppelin-contracts/utils/ReentrancyGuard.sol"; // <--- CORRECTED PATH
+import "openzeppelin-contracts/utils/ReentrancyGuard.sol";
 import "openzeppelin-contracts/token/ERC20/IERC20.sol";
 import { LpUSD } from "./tokens/LpUSD.sol";
 import { SlpUSD } from "./tokens/SlpUSD.sol";
 
-// ... rest of the file is identical ...
 contract StakingPool is Ownable, ReentrancyGuard {
 
     LpUSD public lpUsd;

@@ -2,10 +2,10 @@
 pragma solidity 0.8.30;
 
 import "openzeppelin-contracts/token/ERC20/ERC20.sol";
-import "openzeppelin-contracts/access/Ownable.sol";
 import "openzeppelin-contracts/access/AccessControl.sol";
+import "openzeppelin-contracts/access/Ownable.sol";
 
-contract SlpUSD is ERC20, Ownable, AccessControl {
+contract SlpUSD is ERC20, AccessControl, Ownable {
     bytes32 public constant MINTER_ROLE = keccak256("MINTER_ROLE");
 
     constructor(

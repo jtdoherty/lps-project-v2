@@ -19,7 +19,6 @@ contract DepositController is Ownable, ReentrancyGuard {
     uint256 public slippageBps = 10; // 0.1% slippage tolerance (10 basis points)
 
     event Deposit(address indexed user, uint256 underlyingAmount, uint256 lpUsdAmount);
-    // ... (rest of events and constructor are unchanged)
     event Redeem(address indexed user, uint256 lpUsdAmount, uint256 underlyingAmount);
     event Harvest(address indexed caller, uint256 profitAmount);
     event StakingPoolSet(address indexed newStakingPool);
@@ -50,9 +49,6 @@ contract DepositController is Ownable, ReentrancyGuard {
         uint256[2] memory amounts;
         amounts[0] = scaledAmount;
         
-        // --- FINAL UPGRADE: REALISTIC SLIPPAGE ---
-        // Since the price of the LP token is very close to $1, we can use the
-        // scaled amount as a proxy for the expected amount of LP tokens.
         uint256 minCrvTokens = scaledAmount * (10000 - slippageBps) / 10000;
         
         uint256 crvTokensReceived = curvePool.add_liquidity(amounts, minCrvTokens);
@@ -67,7 +63,6 @@ contract DepositController is Ownable, ReentrancyGuard {
         emit Deposit(msg.sender, _underlyingAmount, lpUsdToMint);
     }
     
-    // ... (rest of the contract is unchanged)
     function redeem(uint256 _lpUsdAmount) external nonReentrant {
         require(_lpUsdAmount > 0, "Redeem amount must be positive");
         uint256 totalLpSupply = lpUsd.totalSupply();
