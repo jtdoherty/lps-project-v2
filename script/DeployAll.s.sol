@@ -12,7 +12,7 @@ contract DeployAll is Script {
     address constant YVAULT_ADDRESS = 0xfBd4d8bf19c67582168059332c46567563d0d75f;
     address constant USDC_ADDRESS = 0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48;
     address constant CURVE_POOL_ADDRESS = 0x4f493B7dE8aAC7d55F71853688b1F7C8F0243C85;
-    uint8 constant USDC_INDEX = 0; // The index for USDC in this pool
+    uint8 constant USDC_INDEX = 0; 
 
     function run() external returns (
         address lpUsd,
@@ -35,7 +35,7 @@ contract DeployAll is Script {
             lpUsd,
             USDC_ADDRESS,
             CURVE_POOL_ADDRESS,
-            USDC_INDEX, // Pass the correct index
+            USDC_INDEX,
             deployerAddress
         );
         depositController = address(depositControllerContract);
